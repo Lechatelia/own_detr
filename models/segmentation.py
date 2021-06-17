@@ -43,20 +43,20 @@ class DETRsegm(nn.Module):
 
         src, mask = features[-1].decompose()
         assert mask is not None
-        src_proj = self.detr.input_proj(src)
+        src_proj = self.detr.input_proj(src) # feat dim 2048--> 256
         hs, memory = self.detr.transformer(src_proj, mask, self.detr.query_embed.weight, pos[-1])
-
-        outputs_class = self.detr.class_embed(hs)
-        outputs_coord = self.detr.bbox_embed(hs).sigmoid()
+        # hs [encode_layer, bs, 100, 256] memory [bs, 256, H, W]
+        outputs_class = self.detr.class_embed(hs) # 6,1, 100, 251
+        outputs_coord = self.detr.bbox_embed(hs).sigmoid() # 6, 1, 100, 4
         out = {"pred_logits": outputs_class[-1], "pred_boxes": outputs_coord[-1]}
         if self.detr.aux_loss:
             out['aux_outputs'] = self.detr._set_aux_loss(outputs_class, outputs_coord)
 
         # FIXME h_boxes takes the last one computed, keep this in mind
-        bbox_mask = self.bbox_attention(hs[-1], memory, mask=mask)
+        bbox_mask = self.bbox_attention(hs[-1], memory, mask=mask) # b, N, num_head, H, W
 
         seg_masks = self.mask_head(src_proj, bbox_mask, [features[2].tensors, features[1].tensors, features[0].tensors])
-        outputs_seg_masks = seg_masks.view(bs, self.detr.num_queries, seg_masks.shape[-2], seg_masks.shape[-1])
+        outputs_seg_masks = seg_masks.view(bs, self.detr.num_queries, seg_masks.shape[-2], seg_masks.shape[-1]) # bs, 100, H/4, W/4
 
         out["pred_masks"] = outputs_seg_masks
         return out
@@ -100,22 +100,23 @@ class MaskHeadSmallConv(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, x: Tensor, bbox_mask: Tensor, fpns: List[Tensor]):
-        x = torch.cat([_expand(x, bbox_mask.shape[1]), bbox_mask.flatten(0, 1)], 1)
+        # x: [bs, 256, w, h] bbox_mask [bs, 100, 8, w, h ]  w= W/32
+        x = torch.cat([_expand(x, bbox_mask.shape[1]), bbox_mask.flatten(0, 1)], 1) # bs*100, 256+8, w, h
 
         x = self.lay1(x)
         x = self.gn1(x)
         x = F.relu(x)
         x = self.lay2(x)
         x = self.gn2(x)
-        x = F.relu(x)
+        x = F.relu(x) # bs*100, 128, w, h
 
-        cur_fpn = self.adapter1(fpns[0])
+        cur_fpn = self.adapter1(fpns[0]) # bs, 128, 2w, 2h
         if cur_fpn.size(0) != x.size(0):
             cur_fpn = _expand(cur_fpn, x.size(0) // cur_fpn.size(0))
         x = cur_fpn + F.interpolate(x, size=cur_fpn.shape[-2:], mode="nearest")
         x = self.lay3(x)
         x = self.gn3(x)
-        x = F.relu(x)
+        x = F.relu(x) # bs*100, 64, 2w, 2h
 
         cur_fpn = self.adapter2(fpns[1])
         if cur_fpn.size(0) != x.size(0):
@@ -123,7 +124,7 @@ class MaskHeadSmallConv(nn.Module):
         x = cur_fpn + F.interpolate(x, size=cur_fpn.shape[-2:], mode="nearest")
         x = self.lay4(x)
         x = self.gn4(x)
-        x = F.relu(x)
+        x = F.relu(x)# bs*100, 32, 4w, 4h
 
         cur_fpn = self.adapter3(fpns[2])
         if cur_fpn.size(0) != x.size(0):
@@ -131,9 +132,9 @@ class MaskHeadSmallConv(nn.Module):
         x = cur_fpn + F.interpolate(x, size=cur_fpn.shape[-2:], mode="nearest")
         x = self.lay5(x)
         x = self.gn5(x)
-        x = F.relu(x)
+        x = F.relu(x) # bs*100, 16, 8w, 8h
 
-        x = self.out_lay(x)
+        x = self.out_lay(x) # bs*100, 1, 8w, 8h=W/4, H/4
         return x
 
 

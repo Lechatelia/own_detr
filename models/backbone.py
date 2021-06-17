@@ -66,7 +66,7 @@ class BackboneBase(nn.Module):
             return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
         else:
             return_layers = {'layer4': "0"}
-        self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
+        self.body = IntermediateLayerGetter(backbone, return_layers=return_layers) # get multi output
         self.num_channels = num_channels
 
     def forward(self, tensor_list: NestedTensor):
@@ -75,7 +75,7 @@ class BackboneBase(nn.Module):
         for name, x in xs.items():
             m = tensor_list.mask
             assert m is not None
-            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
+            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0] # mask size equal feature size 
             out[name] = NestedTensor(x, mask)
         return out
 
@@ -102,9 +102,9 @@ class Joiner(nn.Sequential):
         out: List[NestedTensor] = []
         pos = []
         for name, x in xs.items():
-            out.append(x)
+            out.append(x) # output feature
             # position encoding
-            pos.append(self[1](x).to(x.tensors.dtype))
+            pos.append(self[1](x).to(x.tensors.dtype)) # get position embedding for feature 
 
         return out, pos
 
