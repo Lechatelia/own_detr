@@ -110,13 +110,13 @@ class SetCriterion(nn.Module):
         targets dicts must contain the key "labels" containing a tensor of dim [nb_target_boxes]
         """
         assert 'pred_logits' in outputs
-        src_logits = outputs['pred_logits']
+        src_logits = outputs['pred_logits'] # bs, 100, num_classes+1
 
-        idx = self._get_src_permutation_idx(indices)
-        target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
+        idx = self._get_src_permutation_idx(indices) # bs_index, and prediction_index
+        target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)]) # get the reordered targets
         target_classes = torch.full(src_logits.shape[:2], self.num_classes,
-                                    dtype=torch.int64, device=src_logits.device)
-        target_classes[idx] = target_classes_o
+                                    dtype=torch.int64, device=src_logits.device) # [bs, 100]all the bg at initial
+        target_classes[idx] = target_classes_o # for each matching query, assign a gt label
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {'loss_ce': loss_ce}
@@ -146,14 +146,14 @@ class SetCriterion(nn.Module):
            The target boxes are expected in format (center_x, center_y, w, h), normalized by the image size.
         """
         assert 'pred_boxes' in outputs
-        idx = self._get_src_permutation_idx(indices)
-        src_boxes = outputs['pred_boxes'][idx]
-        target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+        idx = self._get_src_permutation_idx(indices) # bs_index, and prediction_index
+        src_boxes = outputs['pred_boxes'][idx] # select these valid bbox pred in order
+        target_boxes = torch.cat([t['boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0) # select these valid target in order
 
         loss_bbox = F.l1_loss(src_boxes, target_boxes, reduction='none')
 
         losses = {}
-        losses['loss_bbox'] = loss_bbox.sum() / num_boxes
+        losses['loss_bbox'] = loss_bbox.sum() / num_boxes # normalized by the num_boxes,
 
         loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
             box_ops.box_cxcywh_to_xyxy(src_boxes),
@@ -167,13 +167,13 @@ class SetCriterion(nn.Module):
         """
         assert "pred_masks" in outputs
 
-        src_idx = self._get_src_permutation_idx(indices)
-        tgt_idx = self._get_tgt_permutation_idx(indices)
+        src_idx = self._get_src_permutation_idx(indices) # bs_index, and prediction_index
+        tgt_idx = self._get_tgt_permutation_idx(indices) # bs_index, and target index
         src_masks = outputs["pred_masks"]
-        src_masks = src_masks[src_idx]
+        src_masks = src_masks[src_idx] # get the valid predictions
         masks = [t["masks"] for t in targets]
         # TODO use valid to mask invalid areas due to padding in loss
-        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
+        target_masks, valid = nested_tensor_from_tensor_list(masks).decompose() # bs, masks, h, w
         target_masks = target_masks.to(src_masks)
         target_masks = target_masks[tgt_idx]
 
@@ -228,7 +228,7 @@ class SetCriterion(nn.Module):
         num_boxes = sum(len(t["labels"]) for t in targets)
         num_boxes = torch.as_tensor([num_boxes], dtype=torch.float, device=next(iter(outputs.values())).device)
         if is_dist_avail_and_initialized():
-            torch.distributed.all_reduce(num_boxes)
+            torch.distributed.all_reduce(num_boxes) # the all num boxes in all nodes
         num_boxes = torch.clamp(num_boxes / get_world_size(), min=1).item()
 
         # Compute all the requested losses

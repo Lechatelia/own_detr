@@ -274,13 +274,13 @@ class PostProcessPanoptic(nn.Module):
             if isinstance(tup, tuple):
                 return tup
             return tuple(tup.cpu().tolist())
-
+        # iter each images
         for cur_logits, cur_masks, cur_boxes, size, target_size in zip(
             out_logits, raw_masks, raw_boxes, processed_sizes, target_sizes
         ):
             # we filter empty queries and detection below threshold
             scores, labels = cur_logits.softmax(-1).max(-1)
-            keep = labels.ne(outputs["pred_logits"].shape[-1] - 1) & (scores > self.threshold)
+            keep = labels.ne(outputs["pred_logits"].shape[-1] - 1) & (scores > self.threshold) # empty and low score
             cur_scores, cur_classes = cur_logits.softmax(-1).max(-1)
             cur_scores = cur_scores[keep]
             cur_classes = cur_classes[keep]

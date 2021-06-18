@@ -1,0 +1,74 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--masks",
+                "--dataset_file", "coco_panoptic",
+                "--coco_path", "/data/datasets/mscoco2017",
+                 "--coco_panoptic_path", "/data/datasets/mscoco2017",
+                 "--output_dir", "work_dir/debug",
+                 "--batch_size", "1",
+                 "--enc_layers", "2",
+                 "--dec_layers", "2",
+
+
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}",
+                "RANK": "0",
+                "LOCAL_RANK": "0",
+                "WORLD_SIZE": "1",
+                "MASTER_ADDR": "127.0.0.1",
+                "MASTER_PORT": "23232"
+            }
+        },
+                {
+                    "name": "visualize",
+                    "type": "python",
+                    "request": "launch",
+                    "program": "${workspaceFolder}/main.py",
+                    "console": "integratedTerminal",
+                    "justMyCode": false, // enable debugging of standard library functions
+                    "args": [
+                        "--masks",
+                        "--dataset_file",
+                        "coco_panoptic",
+                        "--coco_path",
+                        "/data/datasets/mscoco2017",
+                        "--coco_panoptic_path",
+                        "/data/datasets/mscoco2017",
+                        "--output_dir",
+                        "work_dir/debug",
+                        "--batch_size",
+                        "1",
+                        "--visualize",
+                        "--checkpoint", "~/.cache/torch/hub/checkpoints/detr-r50-panoptic-00ce5173.pth"
+                    ],
+                    "env": {
+                        "PYTHONPATH": "${workspaceFolder}",
+                        "RANK": "0",
+                        "LOCAL_RANK": "0",
+                        "WORLD_SIZE": "1",
+                        "MASTER_ADDR": "127.0.0.1",
+                        "MASTER_PORT": "23232"
+                    }
+                }
+        
+    ]
+}

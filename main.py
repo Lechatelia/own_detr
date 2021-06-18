@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 import datasets
 import util.misc as utils
 from datasets import build_dataset, get_coco_api_from_dataset
-from engine import evaluate, train_one_epoch
+from engine import evaluate, train_one_epoch, visualize
 from models import build_model
 
 
@@ -93,6 +93,8 @@ def get_args_parser():
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
+    parser.add_argument('--visualize', action='store_true')
+    parser.add_argument('--checkpoint',default=None, help='checkpoint used to eval and visualization')
     parser.add_argument('--num_workers', default=2, type=int)
 
     # distributed training parameters
@@ -180,7 +182,14 @@ def main(args):
             optimizer.load_state_dict(checkpoint['optimizer'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
-
+    if args.visualize:
+        if args.dataset_file == "coco_panoptic":
+            checkpoint = torch.load(args.checkpoint, map_location='cpu')
+            model_without_ddp.load_state_dict(checkpoint['model'])
+        else:
+            pass
+        visualize(model, criterion, postprocessors,data_loader_val, base_ds, device, args.output_dir)
+        
     if args.eval:
         test_stats, coco_evaluator = evaluate(model, criterion, postprocessors,
                                               data_loader_val, base_ds, device, args.output_dir)

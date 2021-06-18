@@ -30,6 +30,16 @@ class CocoPanoptic:
         self.ann_file = ann_file
         self.transforms = transforms
         self.return_masks = return_masks
+    
+    def get_classes_dict(self):
+        id2name = dict()
+        name2id = dict()
+        for cate in self.coco['categories']:
+            id2name[cate['id']] = cate['name']
+            name2id[cate['name']] = cate['id']
+        
+        return id2name, name2id
+
 
     def __getitem__(self, idx):
         ann_info = self.coco['annotations'][idx] if "annotations" in self.coco else self.coco['images'][idx]
