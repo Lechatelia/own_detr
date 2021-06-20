@@ -60,6 +60,7 @@ class CocoPanoptic:
 
         target = {}
         target['image_id'] = torch.tensor([ann_info['image_id'] if "image_id" in ann_info else ann_info["id"]])
+        target['item_id'] = torch.tensor([idx])
         if self.return_masks:
             target['masks'] = masks
         target['labels'] = labels

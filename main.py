@@ -187,7 +187,7 @@ def main(args):
             checkpoint = torch.load(args.checkpoint, map_location='cpu')
             model_without_ddp.load_state_dict(checkpoint['model'])
         else:
-            pass
+            raise NotImplementedError("the code is used for panoptoc segmentation now")
         visualize(model, criterion, postprocessors,data_loader_val, base_ds, device, args.output_dir)
         
     if args.eval:

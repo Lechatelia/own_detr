@@ -1,3 +1,4 @@
 {
-    "jupyter.jupyterServerType": "local"
+    "jupyter.jupyterServerType": "local",
+    "python.pythonPath": "/home/SENSETIME/zhujinguo/anaconda3/envs/mmdet/bin/python"
 }
